@@ -50,6 +50,8 @@ const initials = (name: string) =>
     .join('')
     .toUpperCase();
 const monthLabel = (m: string) => `T${Number(m.slice(5))}`;
+const percentage = (value: number, total: number) =>
+  total > 0 ? Math.round((value / total) * 100) : 0;
 const getGreeting = () => {
   const hour = new Date().getHours();
   return hour >= 5 && hour < 12
@@ -454,15 +456,13 @@ function Overview({
         />
         <Stat
           icon={<Receipt />}
-          value={`${Math.round((complete / students.length) * 100)}%`}
+          value={`${percentage(complete, students.length)}%`}
           label="Hoàn thành Quý 1"
           hint={`${complete}/${students.length} học sinh`}
         />
         <Stat
           icon={<MapPin />}
-          value={`${Math.round(
-            (students.filter((s) => s.vehicleId).length / students.length) * 100,
-          )}%`}
+          value={`${percentage(students.filter((s) => s.vehicleId).length, students.length)}%`}
           label="Tỷ lệ lấp đầy"
           hint={`${students.filter((s) => s.vehicleId).length} học sinh đã xếp xe`}
         />
@@ -490,11 +490,11 @@ function Overview({
                   {q.display} · {n} học sinh hoàn thành
                 </small>
                 <Progress
-                  percent={Math.round((n / students.length) * 100)}
+                  percent={percentage(n, students.length)}
                   showInfo={false}
                   strokeColor={['#15ae82', '#7167e8', '#f0a84d'][i]}
                 />
-                <strong>{Math.round((n / students.length) * 100)}%</strong>
+                <strong>{percentage(n, students.length)}%</strong>
               </div>
             );
           })}
@@ -1041,8 +1041,8 @@ function Payments({
       <div className="payment-stats">
         <div className="card">
           <small>Hoàn thành {q.label}</small>
-          <strong>{Math.round((completed / filtered.length) * 100)}%</strong>
-          <Progress percent={(completed / filtered.length) * 100} showInfo={false} />
+          <strong>{percentage(completed, filtered.length)}%</strong>
+          <Progress percent={percentage(completed, filtered.length)} showInfo={false} />
           <p>
             {completed}/{filtered.length} học sinh đã đóng đủ 3 tháng
           </p>
@@ -1057,13 +1057,12 @@ function Payments({
         <div className="card">
           <small>Tiến độ theo tháng</small>
           <strong>
-            {Math.round(
-              (q.months.reduce(
+            {percentage(
+              q.months.reduce(
                 (a, m) => a + filtered.filter((s) => s.paymentHistory[m] === 'paid').length,
                 0,
-              ) /
-                (filtered.length * 3)) *
-                100,
+              ),
+              filtered.length * 3,
             )}
             %
           </strong>
