@@ -1,7 +1,6 @@
 import {
   collection,
   onSnapshot,
-  addDoc,
   updateDoc,
   deleteDoc,
   doc,
@@ -12,38 +11,11 @@ import {
 import { db } from './firebase';
 import { initialStudents, mockVehicles } from './data';
 import type { Student, Vehicle } from './types';
-const read = <T>(key: string, fallback: T): T => {
-  try {
-    const value = localStorage.getItem(key);
-    return value ? (JSON.parse(value) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-};
-const STUDENT_DATA_VERSION = 'eduride-students-v2';
 export const storage = {
-  students: () => {
-    const isCurrent = localStorage.getItem(STUDENT_DATA_VERSION) === 'ready';
-    if (!isCurrent) {
-      localStorage.setItem(STUDENT_DATA_VERSION, 'ready');
-      localStorage.removeItem('eduride_students');
-      return initialStudents.map((item) =>
-        normalizeStudent(item as unknown as Record<string, unknown>),
-      );
-    }
-    const value = read<unknown>('eduride_students', initialStudents);
-    return (Array.isArray(value) ? value : initialStudents).map((item) =>
-      normalizeStudent(item as Record<string, unknown>),
-    );
-  },
-  vehicles: () => {
-    const value = read<unknown>('eduride_vehicles', mockVehicles);
-    return (Array.isArray(value) ? value : mockVehicles).map((item) =>
-      normalizeVehicle(item as Record<string, unknown>),
-    );
-  },
-  saveStudents: (v: Student[]) => localStorage.setItem('eduride_students', JSON.stringify(v)),
-  saveVehicles: (v: Vehicle[]) => localStorage.setItem('eduride_vehicles', JSON.stringify(v)),
+  students: () =>
+    initialStudents.map((item) => normalizeStudent(item as unknown as Record<string, unknown>)),
+  vehicles: () =>
+    mockVehicles.map((item) => normalizeVehicle(item as unknown as Record<string, unknown>)),
 };
 const textValue = (value: unknown, fallback = 'Chưa cập nhật') =>
   typeof value === 'string' && value.trim() ? value : fallback;
@@ -87,36 +59,24 @@ const normalizeVehicle = (row: Record<string, unknown> | null | undefined): Vehi
 const cleanRecord = (value: object) =>
   Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined));
 export async function addRecord<T extends object>(kind: 'students' | 'vehicles', value: T) {
-  if (db)
-    try {
-      await addDoc(collection(db, kind), cleanRecord(value));
-      return;
-    } catch {
-      /* fallback */
-    }
+  if (!db) throw new Error('Firebase chưa được cấu hình');
+  const id = 'id' in value && typeof value.id === 'string' ? value.id : '';
+  if (!id) throw new Error('Bản ghi chưa có ID');
+  await setDoc(doc(db, kind, id), cleanRecord(value));
 }
 export async function updateRecord(kind: 'students' | 'vehicles', id: string, value: object) {
-  if (!db) return;
+  if (!db) throw new Error('Firebase chưa được cấu hình');
   const ref = doc(db, kind, id);
   const payload = cleanRecord(value);
   try {
     await updateDoc(ref, payload);
   } catch {
-    try {
-      await setDoc(ref, payload, { merge: true });
-    } catch {
-      // Firestore update fallback failed; localStorage remains the local fallback.
-    }
+    await setDoc(ref, payload, { merge: true });
   }
 }
 export async function deleteRecord(kind: 'students' | 'vehicles', id: string) {
-  if (db)
-    try {
-      await deleteDoc(doc(db, kind, id));
-      return;
-    } catch {
-      // Ignore delete errors when Firestore is unavailable.
-    }
+  if (!db) throw new Error('Firebase chưa được cấu hình');
+  await deleteDoc(doc(db, kind, id));
 }
 export function subscribe<T>(
   kind: 'students' | 'vehicles',
@@ -152,17 +112,15 @@ export async function seedDefaultVehicles() {
 }
 export async function seedProvidedStudents() {
   const firestore = db;
-  if (!firestore || localStorage.getItem('eduride-firestore-students-v2') === 'ready') return false;
+  if (!firestore) return false;
   try {
     const snapshot = await getDocs(collection(firestore, 'students'));
+    if (!snapshot.empty) return false;
     const batch = writeBatch(firestore);
-    snapshot.docs.forEach((item) => batch.delete(item.ref));
     initialStudents.forEach((student) =>
       batch.set(doc(firestore, 'students', student.id), student),
     );
     await batch.commit();
-    localStorage.setItem('eduride-firestore-students-v2', 'ready');
-    storage.saveStudents(initialStudents);
     return true;
   } catch {
     return false;

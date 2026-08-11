@@ -79,6 +79,11 @@ const parseCsvLine = (line: string) => {
   result.push(current.trim());
   return result;
 };
+const csvValue = (value: unknown) => {
+  const text = String(value ?? '');
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+const csvTextValue = (value: unknown) => csvValue(`="${String(value ?? '').replace(/"/g, '""')}"`);
 function App() {
   const data = useEduRideData();
   const [page, setPage] = useState<Page>('overview');
@@ -107,27 +112,33 @@ function App() {
       ),
     [data.students, search],
   );
-  const saveStudent = (v: Student) => {
+  const saveStudent = async (v: Student) => {
     const next = editing
       ? data.students.map((s) => (s.id === v.id ? v : s))
       : [...data.students, { ...v, id: `s${Date.now()}`, paymentHistory: v.paymentHistory || {} }];
-    data.setStudents(next);
-    storage.saveStudents(next);
-    void (editing ? updateRecord('students', v.id, v) : addRecord('students', v));
-    setModal(null);
-    setEditing(null);
-    message.success('Đã lưu thông tin học sinh');
+    try {
+      await (editing ? updateRecord('students', v.id, v) : addRecord('students', next[next.length - 1]));
+      data.setStudents(next);
+      setModal(null);
+      setEditing(null);
+      message.success('Đã lưu thông tin học sinh trên Firebase');
+    } catch {
+      message.error('Không thể lưu học sinh trên Firebase');
+    }
   };
-  const saveVehicle = (v: Vehicle) => {
+  const saveVehicle = async (v: Vehicle) => {
     const next = editing
       ? data.vehicles.map((x) => (x.id === v.id ? v : x))
       : [...data.vehicles, { ...v, id: `v${Date.now()}` }];
-    data.setVehicles(next);
-    storage.saveVehicles(next);
-    void (editing ? updateRecord('vehicles', v.id, v) : addRecord('vehicles', v));
-    setModal(null);
-    setEditing(null);
-    message.success('Đã lưu thông tin xe');
+    try {
+      await (editing ? updateRecord('vehicles', v.id, v) : addRecord('vehicles', next[next.length - 1]));
+      data.setVehicles(next);
+      setModal(null);
+      setEditing(null);
+      message.success('Đã lưu thông tin xe trên Firebase');
+    } catch {
+      message.error('Không thể lưu xe trên Firebase');
+    }
   };
   const assignStudents = (vehicleId: string, studentIds: string[]) => {
     const selected = new Set(studentIds);
@@ -137,7 +148,6 @@ function App() {
         : s,
     );
     data.setStudents(next);
-    storage.saveStudents(next);
     void Promise.all(
       next
         .filter((s) => s.vehicleId === vehicleId || selected.has(s.id))
@@ -179,8 +189,8 @@ function App() {
       }
       const next = [...data.students, ...imported];
       data.setStudents(next);
-      storage.saveStudents(next);
       await Promise.all(imported.map((s) => addRecord('students', s)));
+      data.setStudents(next);
       message.success(`Đã import ${imported.length} học sinh`);
       return true;
     } catch {
@@ -198,13 +208,14 @@ function App() {
         if (kind === 'students') {
           const n = data.students.filter((x) => x.id !== id);
           data.setStudents(n);
-          storage.saveStudents(n);
         } else {
           const n = data.vehicles.filter((x) => x.id !== id);
           data.setVehicles(n);
-          storage.saveVehicles(n);
         }
-        void deleteRecord(kind, id);
+        void deleteRecord(kind, id).then(
+          () => message.success('Đã xóa dữ liệu trên Firebase'),
+          () => message.error('Không thể xóa dữ liệu trên Firebase'),
+        );
       },
     });
   };
@@ -351,7 +362,6 @@ function App() {
               onUpdate={(s) => {
                 const n = data.students.map((x) => (x.id === s.id ? s : x));
                 data.setStudents(n);
-                storage.saveStudents(n);
                 void updateRecord('students', s.id, s);
               }}
             />
@@ -367,7 +377,6 @@ function App() {
           onSave={(s) => {
             const n = data.students.map((x) => (x.id === s.id ? s : x));
             data.setStudents(n);
-            storage.saveStudents(n);
             void updateRecord('students', s.id, s);
             setDrawer(null);
             message.success('Đã lưu thông tin học sinh');
@@ -653,14 +662,17 @@ function Students({
         (paymentFilter === 'paid'
           ? quarters[0].months.every((m) => s.paymentHistory[m] === 'paid')
           : !quarters[0].months.every((m) => s.paymentHistory[m] === 'paid'))),
-  );
+  ).sort((a, b) => a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' }));
   useEffect(() => setCurrent(1), [search, schoolFilter, vehicleFilter, paymentFilter]);
   const paged = visible.slice((current - 1) * pageSize, current * pageSize);
   const exportCsv = () => {
     const rows = visible.map((s) =>
-      [s.name, s.className, s.school, s.pickup, s.parentPhone].join(','),
+      [csvValue(s.name), csvTextValue(s.className), csvValue(s.school), csvValue(s.pickup), csvTextValue(s.parentPhone)].join(','),
     );
-    const blob = new Blob([['Họ tên,Lớp,Trường,Điểm đón,SĐT phụ huynh', ...rows].join('\n')]);
+    const blob = new Blob(
+      [`\uFEFF${['Họ tên,Lớp,Trường,Điểm đón,SĐT phụ huynh', ...rows].join('\r\n')}`],
+      { type: 'text/csv;charset=utf-8' },
+    );
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'eduride-hoc-sinh.csv';
