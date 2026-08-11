@@ -4,18 +4,13 @@ import {
   updateDoc,
   deleteDoc,
   doc,
-  getDocs,
-  writeBatch,
   setDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { initialStudents, mockVehicles } from './data';
 import type { Student, Vehicle } from './types';
 export const storage = {
-  students: () =>
-    initialStudents.map((item) => normalizeStudent(item as unknown as Record<string, unknown>)),
-  vehicles: () =>
-    mockVehicles.map((item) => normalizeVehicle(item as unknown as Record<string, unknown>)),
+  students: (): Student[] => [],
+  vehicles: (): Vehicle[] => [],
 };
 const textValue = (value: unknown, fallback = 'Chưa cập nhật') =>
   typeof value === 'string' && value.trim() ? value : fallback;
@@ -95,34 +90,4 @@ export function subscribe<T>(
     },
     () => onData(fallback),
   );
-}
-export async function seedDefaultVehicles() {
-  const firestore = db;
-  if (!firestore) return false;
-  try {
-    const snapshot = await getDocs(collection(firestore, 'vehicles'));
-    if (!snapshot.empty) return false;
-    const batch = writeBatch(firestore);
-    mockVehicles.forEach((vehicle) => batch.set(doc(firestore, 'vehicles', vehicle.id), vehicle));
-    await batch.commit();
-    return true;
-  } catch {
-    return false;
-  }
-}
-export async function seedProvidedStudents() {
-  const firestore = db;
-  if (!firestore) return false;
-  try {
-    const snapshot = await getDocs(collection(firestore, 'students'));
-    if (!snapshot.empty) return false;
-    const batch = writeBatch(firestore);
-    initialStudents.forEach((student) =>
-      batch.set(doc(firestore, 'students', student.id), student),
-    );
-    await batch.commit();
-    return true;
-  } catch {
-    return false;
-  }
 }
