@@ -37,10 +37,23 @@ import {
   FileSpreadsheet,
   CloudUpload,
 } from 'lucide-react';
+import {
+  AlignmentType,
+  BorderStyle,
+  Document,
+  Packer,
+  Paragraph,
+  Table,
+  TableCell,
+  TableLayoutType,
+  TableRow,
+  TextRun,
+  WidthType,
+} from 'docx';
 import { schools, quarters } from './types';
 import type { Student, Vehicle } from './types';
 import { useEduRideData } from './hooks';
-import { addRecord, deleteRecord, storage, updateRecord } from './service';
+import { addRecord, deleteRecord, updateRecord } from './service';
 type Page = 'overview' | 'students' | 'vehicles' | 'payments' | 'settings';
 const initials = (name: string) =>
   name
@@ -79,11 +92,6 @@ const parseCsvLine = (line: string) => {
   result.push(current.trim());
   return result;
 };
-const csvValue = (value: unknown) => {
-  const text = String(value ?? '');
-  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-};
-const csvTextValue = (value: unknown) => csvValue(`="${String(value ?? '').replace(/"/g, '""')}"`);
 function App() {
   const data = useEduRideData();
   const [page, setPage] = useState<Page>('overview');
@@ -665,18 +673,89 @@ function Students({
   ).sort((a, b) => a.name.localeCompare(b.name, 'vi', { sensitivity: 'base' }));
   useEffect(() => setCurrent(1), [search, schoolFilter, vehicleFilter, paymentFilter]);
   const paged = visible.slice((current - 1) * pageSize, current * pageSize);
-  const exportCsv = () => {
-    const rows = visible.map((s) =>
-      [csvValue(s.name), csvTextValue(s.className), csvValue(s.school), csvValue(s.pickup), csvTextValue(s.parentPhone)].join(','),
-    );
-    const blob = new Blob(
-      [`\uFEFF${['Họ tên,Lớp,Trường,Điểm đón,SĐT phụ huynh', ...rows].join('\r\n')}`],
-      { type: 'text/csv;charset=utf-8' },
-    );
+  const exportDocx = async () => {
+    const headers = ['STT', 'Họ tên', 'Lớp', 'Điểm đón', 'SĐT phụ huynh'];
+    const columnWidths = [700, 2300, 700, 3600, 1500];
+    const cell = (text: string, bold = false, centered = false) =>
+      new TableCell({
+        margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        children: [
+          new Paragraph({
+            alignment: centered ? AlignmentType.CENTER : AlignmentType.LEFT,
+            spacing: { before: 0, after: 0 },
+            children: [
+              new TextRun({
+                text,
+                bold,
+                font: 'Times New Roman',
+                size: 24,
+              }),
+            ],
+          }),
+        ],
+      });
+    const table = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      columnWidths,
+      layout: TableLayoutType.FIXED,
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+        bottom: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+        left: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+        right: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+        insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+        insideVertical: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+      },
+      rows: [
+        new TableRow({
+          children: headers.map((header, index) => cell(header, true, index === 0 || index === 2)),
+        }),
+        ...visible.map(
+          (s, index) =>
+            new TableRow({
+              children: [
+                cell(String(index + 1), false, true),
+                cell(s.name),
+                cell(s.className, false, true),
+                cell(s.pickup),
+                cell(s.parentPhone),
+              ],
+            }),
+        ),
+      ],
+    });
+    const doc = new Document({
+      sections: [
+        {
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 240 },
+              children: [
+                new TextRun({
+                  text: `Danh sách ${schoolFilter || 'học sinh EduRide'}`,
+                  bold: true,
+                  color: '1D6FBF',
+                  font: 'Times New Roman',
+                  size: 28,
+                }),
+              ],
+            }),
+            table,
+          ],
+        },
+      ],
+    });
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'eduride-hoc-sinh.csv';
+    a.href = url;
+    const schoolFileName = schoolFilter
+      ? schoolFilter.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-')
+      : 'tat-ca-truong';
+    a.download = `eduride-hoc-sinh-${schoolFileName}.docx`;
     a.click();
+    URL.revokeObjectURL(url);
   };
   return (
     <>
@@ -687,7 +766,7 @@ function Students({
           <p>{visible.length} học sinh · cập nhật theo thời gian thực</p>
         </div>
         <div className="title-actions">
-          <Button icon={<Download size={16} />} onClick={exportCsv}>
+          <Button icon={<Download size={16} />} onClick={() => void exportDocx()}>
             Xuất file
           </Button>
           <Button icon={<Upload size={16} />} onClick={onImport}>

@@ -28,7 +28,7 @@ Trong Firebase Console, tạo Cloud Firestore Database và hai collection:
 ## Chức năng
 
 - Dashboard tổng quan với tiến độ Quý 1, Quý 2, Quý 3.
-- Thêm/sửa/xóa học sinh, tìm kiếm, lọc, gán xe, drawer chi tiết và export CSV.
+- Thêm/sửa/xóa học sinh, tìm kiếm, lọc, gán xe, drawer chi tiết và export DOCX.
 - Quản lý đội xe, sức chứa, tỷ lệ lấp đầy, trạng thái hoạt động/bảo trì.
 - Cập nhật học phí độc lập theo từng tháng; đủ 3 tháng hiển thị “Hoàn thành quý”.
 - Responsive mobile với sidebar drawer.
