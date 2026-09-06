@@ -1,0 +1,19 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Dùng chung cho hai ứng dụng trong project edu-ride-22ed0.
+    // Nên giới hạn theo request.auth khi đưa production.
+    match /students/{studentId} {
+      allow read, write: if true;
+    }
+
+    match /vehicles/{vehicleId} {
+      allow read, write: if true;
+    }
+
+    match /guests/{guestId} {
+      allow read, write: if true;
+    }
+  }
+}

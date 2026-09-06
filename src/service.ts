@@ -77,6 +77,7 @@ export function subscribe<T>(
   kind: 'students' | 'vehicles',
   fallback: T[],
   onData: (v: T[]) => void,
+  onError?: (error: Error) => void,
 ) {
   if (!db) return () => undefined;
   return onSnapshot(
@@ -88,6 +89,10 @@ export function subscribe<T>(
       });
       onData((snap.empty ? fallback : rows) as T[]);
     },
-    () => onData(fallback),
+    (error) => {
+      console.error(`[Firebase] Không đọc được collection ${kind}:`, error);
+      onData(fallback);
+      onError?.(error);
+    },
   );
 }

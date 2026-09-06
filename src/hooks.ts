@@ -5,8 +5,12 @@ export function useEduRideData() {
   const [students, setStudents] = useState<Student[]>(storage.students);
   const [vehicles, setVehicles] = useState<Vehicle[]>(storage.vehicles);
   useEffect(() => {
-    const a = subscribe<Student>('students', storage.students(), setStudents);
-    const b = subscribe<Vehicle>('vehicles', storage.vehicles(), setVehicles);
+    const a = subscribe<Student>('students', storage.students(), setStudents, (error) => {
+      console.error('[EduRide] Students Firebase error:', error);
+    });
+    const b = subscribe<Vehicle>('vehicles', storage.vehicles(), setVehicles, (error) => {
+      console.error('[EduRide] Vehicles Firebase error:', error);
+    });
     return () => {
       a();
       b();
