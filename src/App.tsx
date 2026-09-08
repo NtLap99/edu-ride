@@ -182,7 +182,7 @@ function App() {
               id: `s${Date.now()}-${i}`,
               name: row[0] || 'Chưa cập nhật',
               className: row[1] || 'Chưa cập nhật',
-              school: schools.includes(row[2]) ? row[2] : 'Trường Tam Phước',
+              school: schools.includes(row[2]) ? row[2] : 'Trường Tam Phước 3',
               pickup: row[3] || 'Chưa cập nhật',
               parentPhone: row[4] || 'Chưa cập nhật',
               startDate: row[5] || new Date().toISOString().slice(0, 10),
@@ -915,13 +915,15 @@ function Students({
             </tbody>
           </table>
         </div>
-        <Pagination
-          current={current}
-          pageSize={pageSize}
-          total={visible.length}
-          showSizeChanger={false}
-          onChange={(page) => setCurrent(page)}
-        />
+        <div className="table-pagination">
+          <Pagination
+            current={current}
+            pageSize={pageSize}
+            total={visible.length}
+            showSizeChanger={false}
+            onChange={(page) => setCurrent(page)}
+          />
+        </div>
       </section>
     </>
   );
@@ -1233,7 +1235,7 @@ function Payments({
             </tbody>
           </table>
         </div>
-        <div className="payment-pagination">
+        <div className="table-pagination">
           <Pagination
             current={current}
             pageSize={pageSize}
@@ -1334,7 +1336,7 @@ function ImportModal({
           onClick={() => {
             const blob = new Blob(
               [
-                'Họ tên,Lớp,Trường,Địa điểm đón,SĐT phụ huynh,Ngày bắt đầu,Mã xe,Trạng thái\nNguyễn Văn A,1A1,Trường Tam Phước,Cổng trường,0900000000,2026-09-01,v1,active',
+                'Họ tên,Lớp,Trường,Địa điểm đón,SĐT phụ huynh,Ngày bắt đầu,Mã xe,Trạng thái\nNguyễn Văn A,1A1,Trường Tam Phước 3,Cổng trường,0900000000,2026-09-01,v1,active',
               ],
               { type: 'text/csv;charset=utf-8' },
             );

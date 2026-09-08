@@ -25,12 +25,10 @@ export interface Vehicle {
   status: 'active' | 'maintenance';
 }
 export const schools = [
-  'Trường Tam Phước',
-  'Trường Trấn Biên',
+  'Trường Tam Phước 3',
   'Trường Hòa Bình - Sáng',
   'Trường Hòa Bình - Chiều',
   'Trường Thực Hành Sư Phạm',
-  'Trường Bình Đa',
 ];
 export const quarters = [
   {

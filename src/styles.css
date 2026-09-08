@@ -562,8 +562,14 @@ td svg {
   border-radius: 7px;
   font-size: 10px;
 }
-.table-card .ant-pagination {
+.table-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
   padding: 15px 20px;
+}
+.table-pagination .ant-pagination {
+  margin: 0;
 }
 .icon-button {
   border: 0;
@@ -1673,14 +1679,6 @@ td svg {
   .fee-rule {
     gap: 8px;
   }
-}
-.payment-pagination {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 18px;
-}
-.payment-pagination .ant-pagination {
-  margin: 0;
 }
 .detail-list p {
   align-items: center;
